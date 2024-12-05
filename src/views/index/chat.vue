@@ -64,6 +64,7 @@ export default {
   },
   methods: {
     onVoiceChat() {
+      this.$store.commit("SET_CHAT_TYPE", 2);
       this.$router.push({ path: "/voiceChat", query: {} });
     },
   },

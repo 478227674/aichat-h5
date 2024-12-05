@@ -5,7 +5,7 @@ import store from "./store";
 import Vant from "vant/lib/index.js";
 import "vant/lib/index.css";
 
-import WebSocketConnectMethod from "/public/wsconnecter";
+import WebSocketConnectMethod from "@/assets/js/wsconnecter";
 import { getJsonMessage, getConnState } from "@/utils/chat/audio/main";
 // 连接; 定义socket连接类对象与语音对象
 var wsconnecter = new WebSocketConnectMethod({
@@ -15,6 +15,10 @@ var wsconnecter = new WebSocketConnectMethod({
 });
 window.$ws = wsconnecter;
 window.$ws.wsStart();
+
+window.$audioContext = new (window.AudioContext || window.webkitAudioContext)();
+window.$source = window.$audioContext.createBufferSource();
+
 Vue.config.productionTip = false;
 
 import VConsole from "vconsole";

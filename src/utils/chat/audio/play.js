@@ -3,9 +3,7 @@ export default function AudioContext() {
     //授权播放
     navigator.mediaDevices
       .getUserMedia({ audio: true })
-      .then(function (mediaStream) {
-        console.log(mediaStream);
-      })
+      .then(function (mediaStream) {})
       .catch(function (error) {
         console.log(error);
       });

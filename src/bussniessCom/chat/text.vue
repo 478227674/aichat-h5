@@ -85,12 +85,13 @@ export default {
                 type: "audio",
                 duration: (duration / 1000).toFixed(0),
                 content: (window.URL || webkitURL).createObjectURL(theblob),
+                self: true,
               });
             } else {
               console.log("录音时长太短");
             }
           });
-        }, 100);
+        }, 500);
       }
     },
 

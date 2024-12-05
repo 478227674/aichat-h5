@@ -16,29 +16,45 @@ export default {
       audioContext: {},
       audioDataBuffer: [],
       audioIndex: 0, //记录播放位置
-      playNum: 10, //每次播放多少单位
+      playNum: 30, //每次播放多少单位
       source: {},
       isPlaying: false, //是否 播放中
       audio_record: "",
+      slicesNum: 0,
+      chatType: 1, //1对讲 2实时语音
     };
+  },
+  created() {
+    this.$store.commit("SET_CHAT_TYPE", 1);
+    window.$ws.wsSend(JSON.stringify({ online: false }));
+
+    this.audioContext = window.$audioContext;
+    this.source = window.$source;
   },
   mounted() {
     let _that = this;
     //audio下的main.js里定义的，接收websocket回传的数据
     EventBus.$on("websocket-message", function (res) {
-      _that.handleWebSocketMessage(res);
+      // if (_that.$store.state.chatType != 1) {
+      //   return;
+      // }
+      if (res) {
+        if (res != "音频播放结束") {
+          _that.handleWebSocketMessage(res);
+        } else {
+          _that.isPlayEnd = true;
+        }
+      }
     });
     //授权播放
     navigator.mediaDevices
       .getUserMedia({ audio: true })
-      .then(function (mediaStream) {
-        console.log(mediaStream);
-      })
+      .then(function (mediaStream) {})
       .catch(function (error) {
         console.log(error);
       });
     this.audio_record = document.getElementById("audio_record");
-    this.audioContext = new AudioContext();
+    // this.audioContext = new AudioContext();
     // document.getElementById("msgList").addEventListener(
     //   "touchstart",
     //   function (e) {
@@ -47,22 +63,6 @@ export default {
     //   },
     //   { passive: false }
     // );
-  },
-  filters: {
-    // 将日期过滤为 hour:minutes
-    time(date) {
-      if (typeof date === "string") {
-        date = new Date(date);
-      }
-
-      let hours = date.getHours(),
-        mins = date.getMinutes();
-      return (
-        (hours < 10 ? "0" + hours : hours) +
-        ":" +
-        (mins < 10 ? "0" + mins : mins)
-      );
-    },
   },
   directives: {
     // 发送消息后滚动到底部
@@ -80,6 +80,7 @@ export default {
       // 继续将收到的数据添加到音频缓冲区
       this.audioDataBuffer.push(data);
       this.count++;
+      this.slicesNum += 1;
       // 接收50条消息后播放音频
       if (this.count == this.playNum) {
         this.playAudioStream();
@@ -96,20 +97,20 @@ export default {
 
     // 播放音频数据
     playAudioStream() {
+      console.log("对讲的播放方法");
       let _this = this;
       //监听audioIndex，如果大于语音流的二进制数组 则播放完
-      if (this.audioIndex > this.audioDataBuffer.length) {
+      if (this.audioDataBuffer.length == 0) {
         this.audioIndex = 0;
         this.count = 0;
         return;
       }
 
       //截取上次播放完的位置 +this.playNum单位的语音流
-      let playBuffer = this.audioDataBuffer.slice(
+      let playBuffer = this.audioDataBuffer.splice(
         this.audioIndex,
-        this.audioIndex + this.playNum
+        this.playNum
       );
-
       const audioBuffer = playBuffer.reduce((acc, chunk) => {
         const chunkArray = new Int32Array(chunk); // 假设音频数据是 32 位整型
         return acc.concat(Array.from(chunkArray));
@@ -120,22 +121,20 @@ export default {
       for (let i = 0; i < audioBuffer.length; i++) {
         floatArray[i] = audioBuffer[i] / Math.pow(2, 31); // 将 32 位整型数据归一化
       }
-      this.audioContext = new (window.AudioContext ||
-        window.webkitAudioContext)();
+
       const buffer = this.audioContext.createBuffer(
         1,
         floatArray.length,
-        12000
+        15000
       );
       buffer.copyToChannel(floatArray, 0);
 
       this.source = this.audioContext.createBufferSource();
       this.source.buffer = buffer;
 
-      //监听本次播放的this.playNum个单位的语音流 播放完成后count职
+      //监听本次播放的this.playNum个单位的语音流 播放完成后count
       this.source.onended = function (res) {
-        _this.audioIndex = _this.audioIndex + _this.playNum;
-        this.count = 0;
+        _this.count = 0;
         _this.playAudioStream();
       };
       this.source.connect(this.audioContext.destination);
@@ -242,10 +241,8 @@ export default {
     overflow: hidden;
     max-width: 80%;
   }
-
   .self {
     text-align: right;
-
     .avatar {
       float: right;
       margin: 0 0 0 10px;

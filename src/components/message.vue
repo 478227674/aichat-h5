@@ -1,7 +1,7 @@
 <script>
 import { stop, record, start } from "../utils/chat/audio/main";
 import { mapGetters } from "vuex";
-import WebSocketConnectMethod from "/public/wsconnecter";
+import WebSocketConnectMethod from "../assets/js/wsconnecter";
 
 export default {
   computed: {
@@ -9,14 +9,11 @@ export default {
   },
   data() {
     return {
-      ws: null,
-      audioQueue: [], //音频播放队列
-      changeAudio: false, //播放语音过程中 是否点击了其他语音播放
       count: 0,
       audioContext: {},
       audioDataBuffer: [],
       audioIndex: 0, //记录播放位置
-      playNum: 50, //每次播放多少单位
+      playNum: 20, //每次播放多少单位
       source: {},
       isPlaying: false, //是否 播放中
       audio_record: "",
@@ -44,8 +41,6 @@ export default {
     //   stateHandle: (state) => {
     //     console.log(`websocket状态是${state}`);
     //   },
-    //   //websocket的地址
-    //   uri: process.env.VUE_APP_AUDIO_OUTPUT_WSS_URI,
     // });
     // // this.ws.binaryType = "arraybuffer";
     // var ret = this.ws.wsStart();
@@ -85,12 +80,17 @@ export default {
     // 处理接收到的 WebSocket 消息
     handleWebSocketMessage(data) {
       // 继续将收到的数据添加到音频缓冲区
-      this.audioDataBuffer.push(data);
       this.count++;
-      // 接收50条消息后播放音频
-      if (this.count == this.playNum) {
-        this.playAudioStram();
-      }
+      this.audioContext.decodeAudioData(data, function (audioBuffer) {
+        // 如果队列未满，将新的切片推入队列
+        if (this.audioDataBuffer.length < this.playNum) {
+          this.audioDataBuffer.push(audioBuffer);
+        }
+        // 如果队列有音频切片，尝试播放下一个
+        if (this.audioDataBuffer.length > this.playNum) {
+          this.playAudioStram();
+        }
+      });
     },
 
     //停止播放语音流
@@ -140,7 +140,7 @@ export default {
       //监听本次播放的this.playNum个单位的语音流 播放完成后count职
       this.source.onended = function (res) {
         _this.audioIndex = _this.audioIndex + _this.playNum;
-        this.count = 0;
+        _this.count = 0;
         _this.playAudioStream();
       };
       this.source.connect(this.audioContext.destination);

@@ -10,6 +10,7 @@ Vue.use(Vuex);
 const now = new Date();
 const store = new Vuex.Store({
   state: {
+    chatType: 1, //1对讲 2实时语音
     // 当前用户
     user: {
       name: "coffce",
@@ -82,6 +83,10 @@ const store = new Vuex.Store({
     SELECT_SESSION(state, id) {
       state.currentSessionId = id;
     },
+    //切换聊天类型
+    SET_CHAT_TYPE(state, type) {
+      state.chatType = type;
+    },
     // 搜索
     SET_FILTER_KEY(state, value) {
       state.filterKey = value;
@@ -108,7 +113,6 @@ const store = new Vuex.Store({
 store.watch(
   (state) => state.sessions,
   (val) => {
-    console.log("CHANGE: ", val);
     localStorage.setItem("vue-chat-session", JSON.stringify(val));
   },
   {

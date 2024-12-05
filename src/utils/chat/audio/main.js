@@ -1,6 +1,6 @@
 /* 2022-2023 by zhaoming,mali aihealthx.com */
 import { EventBus } from "./event-bus.js";
-
+import store from "@/store/index.js";
 // setTimeout(function () {
 //   console.log(EventBus.$emit);
 
@@ -45,20 +45,26 @@ export function start() {
     return 0;
   }
 }
+
+//暂停录音
+export function onLineChatStopRec() {
+  rec.stop();
+}
+
 //isHandle：停止后是否继续处理录音 默认处理
 export function stop(callback, isHandle) {
   if (isHandle) {
     isRec = false;
     return;
   }
-  var chunk_size = new Array(5, 10, 5);
-  var request = {
-    chunk_size: chunk_size,
-    wav_name: "h5",
-    is_speaking: false,
-    chunk_interval: 10,
-    mode: "2pass",
-  };
+  // var chunk_size = new Array(5, 10, 5);
+  // var request = {
+  //   chunk_size: chunk_size,
+  //   wav_name: "h5",
+  //   is_speaking: false,
+  //   chunk_interval: 10,
+  //   mode: "2pass",
+  // };
 
   if (sampleBuf.length > 0) {
     // 假设你有一个二进制数据（例如，Uint8Array）
@@ -67,13 +73,12 @@ export function stop(callback, isHandle) {
     // 将二进制数据转换为 Base64
     const base64String = btoa(String.fromCharCode.apply(null, binaryData));
 
-    // wsconnecter.wsSend(sendBuf);
-    window.$ws.wsSend(JSON.stringify({ data: base64String, stop: true }));
-
-    console.log("sampleBuf.length" + sampleBuf.length);
+    window.$ws.wsSend(sampleBuf);
+    // window.$ws.wsSend(JSON.stringify({ data: base64String, stop: true }));
     sampleBuf = new Int16Array();
   }
-  window.$ws.wsSend(JSON.stringify(request));
+  window.$ws.wsSend(JSON.stringify({ stop: true }));
+  // window.$ws.wsSend(JSON.stringify(request));
   isRec = false;
 
   if (isfilemode == false) {
@@ -120,15 +125,14 @@ export function recProcess(
     while (sampleBuf.length >= chunk_size) {
       var sendBuf = sampleBuf.slice(0, chunk_size);
       sampleBuf = sampleBuf.slice(chunk_size, sampleBuf.length);
-
       // 假设你有一个二进制数据（例如，Uint8Array）
       const binaryData = new Uint8Array(sendBuf); // 代表字节数据 "Hello"
-
       // 将二进制数据转换为 Base64
       const base64String = btoa(String.fromCharCode.apply(null, binaryData));
+      window.$ws.wsSend(sendBuf);
 
-      // wsconnecter.wsSend(sendBuf);
-      window.$ws.wsSend(JSON.stringify({ data: base64String, stop: false }));
+      // window.$ws.wsSend(JSON.stringify({ data: base64String }));
+      // window.$ws.wsSend(JSON.stringify({ data: base64String, stop: false }));
     }
     // console.log(sendBuf);
   }
@@ -271,7 +275,11 @@ function start_file_send() {
 
 // 语音识别结果; 对jsonMsg数据解析,将识别结果附加到编辑框中
 export function getJsonMessage(jsonMsg) {
-  EventBus.$emit("websocket-message", jsonMsg.data);
+  if (store.state.chatType == 1) {
+    EventBus.$emit("websocket-message", jsonMsg.data);
+  } else {
+    EventBus.$emit("websocket-message-online", jsonMsg.data);
+  }
   return;
   console.log(typeof jsonMsg.data);
   if (jsonMsg.data["text"]) {
@@ -319,15 +327,9 @@ export function getConnState(connState) {
     } else {
     }
   } else if (connState === 1) {
-    //stop();
+    stop();
   } else if (connState === 2) {
     stop();
     console.log("connecttion error");
-
-    alert(
-      "连接地址" +
-        process.env.VUE_APP_AUDIO_INPUT_WSS_URI +
-        "失败,请检查asr地址和端口。或试试界面上手动授权，再连接。"
-    );
   }
 }

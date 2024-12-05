@@ -9,10 +9,11 @@ export default function WebSocketConnectMethod(config) {
   var msgHandle = config.msgHandle;
   var stateHandle = config.stateHandle;
   var uri = config.uri;
+  var socketStatus = null;
   this.wsStart = function () {
     // || process.env.VUE_AUDIO_INPUT_WSS_URI
-    var Uri = uri; //"wss://111.205.137.58:5821/wss/" //设置wss asr online接口地址 如 wss://X.X.X.X:port/wss/
-    if (Uri.match(/wss:\S*|ws:\S*/)) {
+    if (uri.match(/wss:\S*|ws:\S*/)) {
+      //"wss://111.205.137.58:5821/wss/" //设置wss asr online接口地址 如 wss://X.X.X.X:port/wss/
       // console.log("Uri" + Uri);
     } else {
       alert("请检查wss地址正确性");
@@ -20,23 +21,33 @@ export default function WebSocketConnectMethod(config) {
     }
 
     if ("WebSocket" in window) {
-      speechSokt = new WebSocket(Uri); // 定义socket连接对象
+      speechSokt = new WebSocket(uri); // 定义socket连接对象
       speechSokt.binaryType = "arraybuffer";
       speechSokt.onopen = function (e) {
-        console.log("wsopened", e);
+        console.log(
+          `websocket连接成功 ---------------------------  🍍🍍🍍🍍🍍🍍🍍`,
+          e
+        );
 
+        socketStatus = 0;
         onOpen(e);
       }; // 定义响应函数
       speechSokt.onclose = function (e) {
-        console.log("wsclosed", e);
-        onClose(e);
+        console.log(
+          `websocket断开连接 ---------------------------  🍍🍍🍍🍍🍍🍍🍍`,
+          e
+        );
+        socketStatus = 1;
+        // onClose(e);
+        stateHandle(1);
       };
       speechSokt.onmessage = function (e) {
-        onMessage(e);
+        msgHandle(e);
       };
       speechSokt.onerror = function (e) {
-        console.log(e);
-        onError(e);
+        console.log("wserror", e);
+        socketStatus = 2;
+        stateHandle(2);
       };
       return 1;
     } else {
@@ -47,7 +58,6 @@ export default function WebSocketConnectMethod(config) {
 
   // 定义停止与发送函数
   this.wsStop = function () {
-    console.log(123123123);
     if (speechSokt != undefined) {
       // console.log("stop ws!");
       speechSokt.close();
@@ -59,6 +69,14 @@ export default function WebSocketConnectMethod(config) {
     if (speechSokt.readyState === 1) {
       // 0:CONNECTING, 1:OPEN, 2:CLOSING, 3:CLOSED
       speechSokt.send(oneData);
+    }
+  };
+  //获取websocket的状态码
+  this.checkSocketIsOnLine = function () {
+    if (socketStatus == 0) {
+      return true;
+    } else {
+      return false;
     }
   };
 
@@ -87,21 +105,9 @@ export default function WebSocketConnectMethod(config) {
     // if (hotwords != null) {
     //   request.hotwords = hotwords;
     // }
-    // console.log(JSON.stringify(request));
+    console.log(JSON.stringify(request));
     speechSokt.send(JSON.stringify(request));
-    // console.log("连接成功");
+    console.log("连接成功");
     stateHandle(0);
-  }
-
-  function onClose(e) {
-    stateHandle(1);
-  }
-
-  function onMessage(e) {
-    msgHandle(e);
-  }
-
-  function onError(e) {
-    stateHandle(2);
   }
 }
